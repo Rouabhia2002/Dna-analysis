@@ -1,13 +1,12 @@
 # =========================
-# BioGen Mini-Project (Updated Full Code)
-# Part 1 + Part 2 + Part 3 + 3D Viewer helpers
-# + FASTA multi-record analysis (Batch)
+# BioGen Mini-Project — main.py
+# Algorithms: Part 1 + Part 2 + Part 3 + Batch FASTA + 3D helper
 # =========================
 
 from __future__ import annotations
 from dataclasses import dataclass
-import webbrowser
 import re
+import webbrowser
 
 # =========================
 # PART 1 — Single DNA Sequence Analysis
@@ -22,58 +21,37 @@ PURINES = {"A", "G"}
 PYRIMIDINES = {"C", "T"}
 
 CODON_TABLE = {
-    # Phenylalanine
     "TTT": "F", "TTC": "F",
-    # Leucine
     "TTA": "L", "TTG": "L", "CTT": "L", "CTC": "L", "CTA": "L", "CTG": "L",
-    # Isoleucine
     "ATT": "I", "ATC": "I", "ATA": "I",
-    # Methionine (Start)
     "ATG": "M",
-    # Valine
     "GTT": "V", "GTC": "V", "GTA": "V", "GTG": "V",
 
-    # Serine
     "TCT": "S", "TCC": "S", "TCA": "S", "TCG": "S", "AGT": "S", "AGC": "S",
-    # Proline
     "CCT": "P", "CCC": "P", "CCA": "P", "CCG": "P",
-    # Threonine
     "ACT": "T", "ACC": "T", "ACA": "T", "ACG": "T",
-    # Alanine
     "GCT": "A", "GCC": "A", "GCA": "A", "GCG": "A",
 
-    # Tyrosine
     "TAT": "Y", "TAC": "Y",
-    # Histidine
     "CAT": "H", "CAC": "H",
-    # Glutamine
     "CAA": "Q", "CAG": "Q",
-    # Asparagine
     "AAT": "N", "AAC": "N",
-    # Lysine
     "AAA": "K", "AAG": "K",
-    # Aspartic Acid
     "GAT": "D", "GAC": "D",
-    # Glutamic Acid
     "GAA": "E", "GAG": "E",
 
-    # Cysteine
     "TGT": "C", "TGC": "C",
-    # Tryptophan
     "TGG": "W",
-    # Arginine
     "CGT": "R", "CGC": "R", "CGA": "R", "CGG": "R", "AGA": "R", "AGG": "R",
-    # Glycine
     "GGT": "G", "GGC": "G", "GGA": "G", "GGG": "G",
 
-    # Stop codons
     "TAA": "*", "TAG": "*", "TGA": "*",
 }
 
 
 def clean_seq(seq: str) -> str:
     """Remove spaces/newlines and uppercase."""
-    return seq.replace(" ", "").replace("\n", "").upper()
+    return seq.replace(" ", "").replace("\n", "").strip().upper()
 
 
 def validate_dna(seq: str) -> None:
@@ -81,112 +59,7 @@ def validate_dna(seq: str) -> None:
     s = clean_seq(seq)
     bad = [base for base in s if base not in DNA_ALPHABET]
     if bad:
-        bad_unique = sorted(set(bad))
-        raise ValueError(f"Invalid DNA sequence: only A,T,C,G allowed. Found: {bad_unique}")
-
-
-# =========================
-# NEW — FASTA MULTI-RECORD SUPPORT (Batch)
-# =========================
-
-def read_fasta_records(path: str) -> list[tuple[str, str]]:
-    """
-    Read a FASTA file with MANY sequences.
-    Returns list of (seq_id, dna_sequence).
-    Supports multi-line sequences.
-
-    Example FASTA:
-    >seq1
-    ATGC...
-    >seq2
-    TTAA...
-    """
-    records: list[tuple[str, str]] = []
-    current_id: str | None = None
-    seq_parts: list[str] = []
-
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-
-            if line.startswith(">"):
-                # save previous record
-                if current_id is not None:
-                    seq = clean_seq("".join(seq_parts))
-                    if seq:
-                        validate_dna(seq)
-                        records.append((current_id, seq))
-
-                # start new record
-                current_id = line[1:].split()[0]
-                seq_parts = []
-            else:
-                seq_parts.append(line)
-
-    # save last record
-    if current_id is not None:
-        seq = clean_seq("".join(seq_parts))
-        if seq:
-            validate_dna(seq)
-            records.append((current_id, seq))
-
-    if not records:
-        raise ValueError("No FASTA records found (file empty or invalid).")
-
-    return records
-
-
-def analyze_fasta_records(path: str) -> list[dict]:
-    """
-    Analyze ALL sequences in FASTA:
-    - stats
-    - ORFs
-    - proteins from ORFs
-    Returns list of dict reports (one per sequence).
-    """
-    records = read_fasta_records(path)
-    reports: list[dict] = []
-
-    for seq_id, seq in records:
-        stats = dna_statistics(seq)
-        orfs = find_orfs(seq)
-        proteins = extract_proteins_from_orfs(orfs)
-
-        reports.append({
-            "id": seq_id,
-            "sequence": seq,       # keep/remove depending on teacher preference
-            "stats": stats,
-            "orf_count": len(orfs),
-            "proteins": proteins,
-        })
-
-    return reports
-
-
-def summarize_fasta_reports(reports: list[dict]) -> dict:
-    """Global summary for the whole FASTA file."""
-    n = len(reports)
-    lengths = [r["stats"]["length"] for r in reports]
-    gcs = [r["stats"]["GC%"] for r in reports]
-
-    return {
-        "n_sequences": n,
-        "min_len": min(lengths),
-        "max_len": max(lengths),
-        "avg_len": sum(lengths) / n,
-        "avg_gc": sum(gcs) / n,
-    }
-
-
-# =========================
-# Part 1 Functions
-# =========================
-
-def sequence_length(seq: str) -> int:
-    """Length after cleaning."""
-    return len(clean_seq(seq))
+        raise ValueError(f"Invalid DNA sequence: only A,T,C,G allowed. Found: {sorted(set(bad))}")
 
 
 def dna_statistics(seq: str) -> dict[str, float]:
@@ -236,7 +109,7 @@ def split_codons(seq: str, frame: int = 0) -> list[str]:
 
 
 def start_positions(seq: str) -> list[int]:
-    """Return nucleotide positions of 'ATG' in the sequence (0-based)."""
+    """Return nucleotide positions of 'ATG' (0-based)."""
     validate_dna(seq)
     s = clean_seq(seq)
 
@@ -248,7 +121,7 @@ def start_positions(seq: str) -> list[int]:
 
 
 def stop_positions(seq: str) -> list[int]:
-    """Return nucleotide positions of stop codons in the sequence (0-based)."""
+    """Return nucleotide positions of stop codons (0-based)."""
     validate_dna(seq)
     s = clean_seq(seq)
 
@@ -262,16 +135,16 @@ def stop_positions(seq: str) -> list[int]:
 @dataclass
 class ORF:
     frame: int
-    start: int   # nucleotide index (0-based)
-    end: int     # nucleotide index (exclusive)
-    dna: str     # ORF DNA including stop codon
+    start: int   # 0-based
+    end: int     # exclusive
+    dna: str     # includes stop codon
 
 
 def find_orfs(seq: str) -> list[ORF]:
     """
     Find ORFs on forward strand in frames 0/1/2.
-    ORF = ATG ... (stop codon TAA/TAG/TGA)
-    Non-overlap strategy: once one ORF found, continue after its stop.
+    ORF = ATG ... stop codon
+    Non-overlap strategy: after one ORF, continue after its stop.
     """
     validate_dna(seq)
     s = clean_seq(seq)
@@ -286,7 +159,7 @@ def find_orfs(seq: str) -> list[ORF]:
                 while j < len(codons):
                     if codons[j] in STOP_CODONS:
                         start_nt = frame + i * 3
-                        end_nt = frame + (j + 1) * 3  # include stop codon
+                        end_nt = frame + (j + 1) * 3
                         dna_orf = s[start_nt:end_nt]
                         orfs.append(ORF(frame, start_nt, end_nt, dna_orf))
                         i = j + 1
@@ -301,7 +174,7 @@ def find_orfs(seq: str) -> list[ORF]:
 
 
 def translate_orf(orf_dna: str) -> str:
-    """Translate ORF DNA until stop codon (stop not included in protein)."""
+    """Translate ORF DNA until stop codon (stop not included)."""
     validate_dna(orf_dna)
     s = clean_seq(orf_dna)
 
@@ -312,20 +185,16 @@ def translate_orf(orf_dna: str) -> str:
         if aa == "*":
             break
         protein.append(aa)
-
     return "".join(protein)
 
 
 def extract_proteins_from_orfs(orfs: list[ORF]) -> list[str]:
-    """Translate every ORF DNA into protein."""
+    """Translate each ORF DNA into protein."""
     return [translate_orf(o.dna) for o in orfs]
 
 
 def translate_dna(seq: str, frame: int = 0, stop_at_stop: bool = False) -> str:
-    """
-    Translate the WHOLE sequence starting from a frame (0/1/2).
-    If stop_at_stop=True, stop when encountering first stop codon.
-    """
+    """Translate whole sequence from given frame."""
     validate_dna(seq)
     s = clean_seq(seq)
 
@@ -336,7 +205,6 @@ def translate_dna(seq: str, frame: int = 0, stop_at_stop: bool = False) -> str:
         if aa == "*" and stop_at_stop:
             break
         protein.append(aa)
-
     return "".join(protein)
 
 
@@ -345,7 +213,6 @@ def translate_dna(seq: str, frame: int = 0, stop_at_stop: bool = False) -> str:
 # =========================
 
 def validate_two_sequences(seq1: str, seq2: str) -> tuple[str, str]:
-    """Clean + validate both DNA sequences and return cleaned versions."""
     s1 = clean_seq(seq1)
     s2 = clean_seq(seq2)
     validate_dna(s1)
@@ -354,7 +221,6 @@ def validate_two_sequences(seq1: str, seq2: str) -> tuple[str, str]:
 
 
 def compare_lengths(seq1: str, seq2: str) -> dict:
-    """Length comparison report."""
     s1, s2 = validate_two_sequences(seq1, seq2)
     len1, len2 = len(s1), len(s2)
     return {
@@ -368,19 +234,19 @@ def compare_lengths(seq1: str, seq2: str) -> dict:
 
 @dataclass
 class Mutation:
-    type: str  # "substitution" | "insertion" | "deletion"
-    pos: int   # position on reference seq1 (0-based). insertion is "after pos"
-    ref: str   # base in seq1, or '-'
-    alt: str   # base in seq2, or '-'
+    type: str  # substitution | insertion | deletion
+    pos: int
+    ref: str
+    alt: str
 
 
 def global_align(seq1: str, seq2: str, match: int = 1, mismatch: int = -1, gap: int = -1) -> tuple[str, str]:
-    """Global alignment (Needleman–Wunsch). Returns aligned strings with '-' gaps."""
+    """Needleman–Wunsch global alignment."""
     s1, s2 = validate_two_sequences(seq1, seq2)
     n, m = len(s1), len(s2)
 
     score = [[0] * (m + 1) for _ in range(n + 1)]
-    tb = [[None] * (m + 1) for _ in range(n + 1)]  # "D", "U", "L"
+    tb = [[None] * (m + 1) for _ in range(n + 1)]  # D/U/L
 
     for i in range(1, n + 1):
         score[i][0] = score[i - 1][0] + gap
@@ -394,16 +260,9 @@ def global_align(seq1: str, seq2: str, match: int = 1, mismatch: int = -1, gap: 
             diag = score[i - 1][j - 1] + (match if s1[i - 1] == s2[j - 1] else mismatch)
             up = score[i - 1][j] + gap
             left = score[i][j - 1] + gap
-
             best = max(diag, up, left)
             score[i][j] = best
-
-            if best == diag:
-                tb[i][j] = "D"
-            elif best == up:
-                tb[i][j] = "U"
-            else:
-                tb[i][j] = "L"
+            tb[i][j] = "D" if best == diag else "U" if best == up else "L"
 
     a1, a2 = [], []
     i, j = n, m
@@ -429,14 +288,12 @@ def global_align(seq1: str, seq2: str, match: int = 1, mismatch: int = -1, gap: 
 
 
 def detect_mutations(seq1: str, seq2: str) -> tuple[str, str, list[Mutation]]:
-    """Align then detect substitutions/insertions/deletions."""
+    """Align then detect mutations."""
     a1, a2 = global_align(seq1, seq2)
     muts: list[Mutation] = []
-
     pos_ref = -1
-    for k in range(len(a1)):
-        c1, c2 = a1[k], a2[k]
 
+    for c1, c2 in zip(a1, a2):
         if c1 != "-":
             pos_ref += 1
 
@@ -454,7 +311,6 @@ def detect_mutations(seq1: str, seq2: str) -> tuple[str, str, list[Mutation]]:
 
 
 def classify_mutations(muts: list[Mutation]) -> list[dict]:
-    """Add a class field: substitution -> transition/transversion."""
     out = []
     for m in muts:
         if m.type == "substitution":
@@ -464,52 +320,35 @@ def classify_mutations(muts: list[Mutation]) -> list[dict]:
                 cls = "transversion"
         else:
             cls = m.type
-
         out.append({"type": m.type, "pos": m.pos, "ref": m.ref, "alt": m.alt, "class": cls})
     return out
 
 
 def mutation_summary(seq1: str, muts: list[Mutation]) -> dict:
-    """Count mutations + compute mutation rate = total_mutations / length(reference)."""
     s1 = clean_seq(seq1)
     n = len(s1)
-
     counts = {"substitution": 0, "insertion": 0, "deletion": 0}
     for m in muts:
         counts[m.type] += 1
-
     total = sum(counts.values())
     rate = (total / n) if n > 0 else 0
-
-    return {
-        "length_ref": n,
-        "total_mutations": total,
-        "counts": counts,
-        "mutation_rate": rate,
-    }
+    return {"length_ref": n, "total_mutations": total, "counts": counts, "mutation_rate": rate}
 
 
 def orf_report(seq: str) -> dict:
-    """ORF detection + proteins."""
     s = clean_seq(seq)
     validate_dna(s)
-
     orfs = find_orfs(s)
     proteins = [translate_orf(o.dna) for o in orfs]
-
     return {"orf_count": len(orfs), "orfs": orfs, "proteins": proteins}
 
 
 def compare_orfs(seq1: str, seq2: str) -> dict:
-    """Compare ORFs before/after mutation."""
     r1 = orf_report(seq1)
     r2 = orf_report(seq2)
-
     orf_dna_1 = [o.dna for o in r1["orfs"]]
     orf_dna_2 = [o.dna for o in r2["orfs"]]
-
     common = set(orf_dna_1) & set(orf_dna_2)
-
     return {
         "orf_count_before": r1["orf_count"],
         "orf_count_after": r2["orf_count"],
@@ -520,15 +359,11 @@ def compare_orfs(seq1: str, seq2: str) -> dict:
 
 
 def compare_proteins(seq1: str, seq2: str) -> dict:
-    """Compare proteins extracted from ORFs before/after."""
     r1 = orf_report(seq1)
     r2 = orf_report(seq2)
-
     p1 = r1["proteins"]
     p2 = r2["proteins"]
-
     common = set(p1) & set(p2)
-
     return {
         "proteins_before": len(p1),
         "proteins_after": len(p2),
@@ -539,41 +374,30 @@ def compare_proteins(seq1: str, seq2: str) -> dict:
 
 
 def mutation_in_orf(pos: int, orf: ORF) -> bool:
-    """True if reference position is inside ORF region."""
     return orf.start <= pos < orf.end
 
 
 def codon_index_in_orf(pos: int, orf: ORF) -> int:
-    """Codon number (0-based) inside ORF for this nucleotide position."""
     return (pos - orf.start) // 3
 
 
 def impact_analysis(seq1: str, seq2: str) -> list[dict]:
     """
-    Protein impact analysis based on reference ORFs (seq1):
-      - substitution inside ORF -> silent/missense/nonsense
-      - indel inside ORF -> frameshift (simple assumption: 1-base indel)
+    substitution inside ORF -> silent/missense/nonsense
+    indel inside ORF -> frameshift (assume 1-base indel)
     """
     s1, s2 = validate_two_sequences(seq1, seq2)
     _, _, muts = detect_mutations(s1, s2)
-
     orfs_ref = find_orfs(s1)
     impacts: list[dict] = []
 
     for m in muts:
         if m.type in ("insertion", "deletion"):
-            inside = False
             for o in orfs_ref:
                 if mutation_in_orf(m.pos, o):
-                    inside = True
-                    impacts.append({
-                        "mutation": m,
-                        "impact": "frameshift",
-                        "orf_start": o.start,
-                        "orf_end": o.end,
-                    })
+                    impacts.append({"mutation": m, "impact": "frameshift", "orf_start": o.start, "orf_end": o.end})
                     break
-            if not inside:
+            else:
                 impacts.append({"mutation": m, "impact": "noncoding_indel"})
             continue
 
@@ -621,16 +445,14 @@ def impact_analysis(seq1: str, seq2: str) -> list[dict]:
 
 
 # =========================
-# PART 3 — Visualization (text)
+# PART 3 — Visualization helpers
 # =========================
 
 def alignment_symbols(aligned1: str, aligned2: str) -> str:
-    """'|' for match, '*' for mutation."""
     return "".join("|" if c1 == c2 else "*" for c1, c2 in zip(aligned1, aligned2))
 
 
 def highlight_alignment(aligned1: str, aligned2: str) -> tuple[str, str]:
-    """Highlight mutations with brackets []."""
     h1, h2 = [], []
     for c1, c2 in zip(aligned1, aligned2):
         if c1 == c2:
@@ -640,53 +462,107 @@ def highlight_alignment(aligned1: str, aligned2: str) -> tuple[str, str]:
     return "".join(h1), "".join(h2)
 
 
-def protein_compare_view(p1: str, p2: str) -> tuple[str, str, str]:
-    """Protein comparison line-by-line (pad shorter with '-' then use '|' / '*')."""
-    n = max(len(p1), len(p2))
-    a1 = p1.ljust(n, "-")
-    a2 = p2.ljust(n, "-")
-    mid = "".join("|" if x == y else "*" for x, y in zip(a1, a2))
-    return a1, mid, a2
-
-
-def print_protein_view(p1: str, p2: str) -> None:
-    """Console print for protein comparison."""
-    a1, mid, a2 = protein_compare_view(p1, p2)
-    print(a1)
-    print(mid)
-    print(a2)
-
-
 def alignment_view(seq1: str, seq2: str) -> dict:
-    """Returns alignment text block + highlighted."""
     a1, a2 = global_align(seq1, seq2)
     mid = alignment_symbols(a1, a2)
     h1, h2 = highlight_alignment(a1, a2)
+    return {"aligned1": a1, "symbols": mid, "aligned2": a2, "highlighted1": h1, "highlighted2": h2}
+
+
+# =========================
+# FASTA MULTI-RECORD SUPPORT (Batch)
+# =========================
+
+def read_fasta_records(path: str) -> list[tuple[str, str]]:
+    """
+    Read a FASTA file with MANY sequences.
+    Returns list of (seq_id, dna_sequence).
+    """
+    records: list[tuple[str, str]] = []
+    current_id: str | None = None
+    seq_parts: list[str] = []
+
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.startswith(">"):
+                if current_id is not None:
+                    seq = clean_seq("".join(seq_parts))
+                    if seq:
+                        validate_dna(seq)
+                        records.append((current_id, seq))
+                current_id = line[1:].split()[0]
+                seq_parts = []
+            else:
+                # keep only letters (safe)
+                seq_parts.append(re.sub(r"[^A-Za-z]", "", line))
+
+    if current_id is not None:
+        seq = clean_seq("".join(seq_parts))
+        if seq:
+            validate_dna(seq)
+            records.append((current_id, seq))
+
+    if not records:
+        raise ValueError("No FASTA records found (file empty or invalid).")
+
+    return records
+
+
+def analyze_fasta_records(path: str) -> list[dict]:
+    """
+    Analyze ALL sequences in FASTA.
+    Returns list of dict reports (one per sequence).
+    """
+    records = read_fasta_records(path)
+    reports: list[dict] = []
+
+    for seq_id, seq in records:
+        stats = dna_statistics(seq)
+        orfs = find_orfs(seq)
+        proteins = extract_proteins_from_orfs(orfs)
+
+        reports.append({
+            "id": seq_id,
+            "sequence": seq,
+            "stats": stats,
+            "orf_count": len(orfs),
+            "proteins": proteins,
+        })
+
+    return reports
+
+
+def summarize_fasta_reports(reports: list[dict]) -> dict:
+    n = len(reports)
+    lengths = [int(r["stats"]["length"]) for r in reports]
+    gcs = [float(r["stats"]["GC%"]) for r in reports]
+
     return {
-        "aligned1": a1,
-        "symbols": mid,
-        "aligned2": a2,
-        "highlighted1": h1,
-        "highlighted2": h2,
+        "n_sequences": n,
+        "min_len": min(lengths),
+        "max_len": max(lengths),
+        "avg_len": sum(lengths) / n,
+        "avg_gc": sum(gcs) / n,
     }
 
 
 # =========================
-# PART 3D — 3D Protein Visualization (Advanced Feature)
+# PART 3D — 3D Protein Visualization (Mol*)
 # =========================
 
 def _is_valid_pdb_id(pdb_id: str) -> bool:
-    """PDB IDs are often 4 alphanumeric chars (e.g., 1CRN)."""
     return bool(re.fullmatch(r"[0-9A-Za-z]{4}", pdb_id))
 
 
 def _is_valid_uniprot_id(uniprot_id: str) -> bool:
-    """Simple UniProt ID check (good enough for mini-project)."""
     return bool(re.fullmatch(r"[0-9A-Za-z]{6,10}", uniprot_id))
 
 
 def open_3d_pdb(pdb_id: str) -> None:
-    """Open Mol* viewer using a PDB ID."""
     pdb_id = pdb_id.strip().upper()
     if not pdb_id:
         raise ValueError("Please enter a PDB ID (example: 1CRN).")
@@ -697,7 +573,6 @@ def open_3d_pdb(pdb_id: str) -> None:
 
 
 def open_3d_alphafold(uniprot_id: str) -> None:
-    """Open Mol* viewer using AlphaFold DB UniProt ID."""
     uniprot_id = uniprot_id.strip().upper()
     if not uniprot_id:
         raise ValueError("Please enter a UniProt ID (example: P69905).")
@@ -708,38 +583,11 @@ def open_3d_alphafold(uniprot_id: str) -> None:
 
 
 def changed_residue_positions(prot1: str, prot2: str) -> list[int]:
-    """1-based residue indices where proteins differ (helps show mutation effects)."""
     n = min(len(prot1), len(prot2))
     changed = []
-
     for i in range(n):
         if prot1[i] != prot2[i]:
             changed.append(i + 1)
-
     for i in range(n, max(len(prot1), len(prot2))):
         changed.append(i + 1)
-
     return changed
-
-
-# =========================
-# Quick test (optional)
-# =========================
-if __name__ == "__main__":
-    s1 = "ATGAAATTTTAA"
-    s2 = "ATGAAAATTTTAA"  # insertion of A
-
-    print("Part 1 stats:", dna_statistics(s1))
-    print("Reverse complement:", reverse_complement(s1))
-    print("ORFs:", find_orfs(s1))
-    print("Translate frame0:", translate_dna(s1, 0))
-
-    a1, a2, muts = detect_mutations(s1, s2)
-    print("\nAligned:")
-    print(a1)
-    print(alignment_symbols(a1, a2))
-    print(a2)
-    print("\nMutations:", muts)
-    print("Classified:", classify_mutations(muts))
-    print("Summary:", mutation_summary(s1, muts))
-    print("Impact:", impact_analysis(s1, s2))
